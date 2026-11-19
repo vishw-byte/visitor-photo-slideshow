@@ -1,0 +1,43 @@
+# Environment and Secrets
+.env
+.env.local
+*.env
+!*.env.example
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Databases & Local Storage
+*.db*
+*.sqlite*
+*.sqlite3*
+*.db-journal
+uploads/
+backend/uploads/
+media_uploads/
+
+# Flutter / Dart
+frontend/.dart_tool/
+frontend/.packages
+frontend/build/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+
+# Local Dev helper scripts
+test_live_e2e.py
+
+# Operating System & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.bak

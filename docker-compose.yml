@@ -1,0 +1,75 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: slideshow_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-slideshow_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production_password}
+      POSTGRES_DB: ${POSTGRES_DB:-slideshow_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-slideshow_user} -d ${POSTGRES_DB:-slideshow_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - slideshow_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: slideshow_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PROJECT_NAME: "Visitor Photo Slideshow API"
+      ENVIRONMENT: "production"
+      DEBUG: "false"
+      DATABASE_URL: "postgresql+psycopg2://${POSTGRES_USER:-slideshow_user}:${POSTGRES_PASSWORD:-change_me_in_production_password}@db:5432/${POSTGRES_DB:-slideshow_db}"
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_DEFAULT_USERNAME: ${ADMIN_DEFAULT_USERNAME:-admin}
+      ADMIN_DEFAULT_PASSWORD: ${ADMIN_DEFAULT_PASSWORD}
+      PUBLIC_PORTAL_URL: ${PUBLIC_PORTAL_URL}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://photos.yourdomain.com}
+    volumes:
+      - media_uploads:/app/uploads
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - slideshow_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: slideshow_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    networks:
+      - slideshow_network
+
+volumes:
+  postgres_data:
+    driver: local
+  media_uploads:
+    driver: local
+
+networks:
+  slideshow_network:
+    driver: bridge
