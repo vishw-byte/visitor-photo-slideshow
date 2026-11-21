@@ -86,6 +86,7 @@ class SqlAlchemyPhotoRepository(IPhotoRepository):
         consent_given: bool,
         consent_given_at: Optional[datetime],
         consent_policy_version: Optional[str],
+        status: PhotoStatus = PhotoStatus.PENDING,
     ) -> PhotoEntity:
         db_photo = DBPhoto(
             visitor_id=visitor_id,
@@ -99,7 +100,7 @@ class SqlAlchemyPhotoRepository(IPhotoRepository):
             consent_given=consent_given,
             consent_given_at=consent_given_at,
             consent_policy_version=consent_policy_version,
-            status=PhotoStatus.PENDING.value,
+            status=status.value,
             is_deleted=False,
         )
         self.db.add(db_photo)

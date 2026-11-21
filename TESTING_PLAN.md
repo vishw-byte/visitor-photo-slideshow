@@ -10,8 +10,8 @@ Every phase of the application includes automated tests verifying domain logic, 
 
 | Suite | Technology | Test Targets | Count | Status |
 |---|---|---|---|---|
-| **Backend Unit & API** | Pytest, TestClient, SQLite in-memory | Configuration, Database probes, Magic-byte inspection, Visitor tokens, Admin bcrypt/JWT, Upload batch limits, Consent verification, Status transitions, Deletion eviction, Display feeds, Settings propagation, Production URL validation | 46 | **PASSING** |
-| **Backend E2E Lifecycle**| Pytest, TestClient | Full lifecycle from visitor registration to upload, admin review, TV display, QR code, deletion eviction, settings sync | 1 | **PASSING** |
+| **Backend Unit & API** | Pytest, TestClient, SQLite in-memory | Configuration, Database probes, Magic-byte inspection, Visitor tokens, Admin bcrypt/JWT, Upload batch limits, Consent verification, Automatic approval on upload, Status transitions, Post-moderation rejection, Deletion eviction, Display feeds, Settings propagation, Production URL validation | 48 | **PASSING** |
+| **Backend E2E Lifecycle**| Pytest, TestClient | Full lifecycle from visitor registration to upload auto-approval, immediate TV display, admin post-moderation rejection, QR code, deletion eviction, settings sync | 1 | **PASSING** |
 | **Frontend Widget & Logic** | flutter_test, Riverpod mocks | Visitor registration & upload screens, Status badges, Admin login & dashboard, Photo moderation queue, Slideshow settings, Smart TV loading/empty/disabled/active states, QR code widget, Keyboard shortcut, Settings consistency | 25 | **PASSING** |
 | **Static Code Analysis** | flutter analyze | Linting, types, unused imports, deprecation checks | 0 issues | **CLEAN** |
 
@@ -32,10 +32,10 @@ cd backend
 - `test_magic_bytes.py`: JPEG, PNG, WebP byte verification, rejection of disguised executables.
 - `test_models.py`: Model creation, constraints, unique tokens, default settings.
 - `test_security.py`: 256-bit visitor token entropy, bcrypt password hashing, JWT token expiration and decoding.
-- `test_phase2_visitor_portal.py`: Visitor registration, duplicate name handling, multi-photo uploads, consent requirement, photo history isolation, photo deletion.
-- `test_phase3_admin_moderation.py`: Admin login, JWT route guards, visitor token rejection, dashboard metrics, consent-checked approval, mandatory rejection reasons, deleted photo protection.
-- `test_phase4_smart_tv_display.py`: Public display feed, settings endpoints, empty queue, approved photo isolation, instant deletion eviction, master slideshow pause toggle.
-- `test_phase5_e2e_integration.py`: End-to-end multi-step integration lifecycle test.
+- `test_phase2_visitor_portal.py`: Visitor registration, duplicate name handling, multi-photo uploads, consent requirement, photo history isolation, photo deletion, automatic approval verification on valid uploads.
+- `test_phase3_admin_moderation.py`: Admin login, JWT route guards, visitor token rejection, dashboard metrics, manual approval of pending queue items, post-moderation rejection of approved items, deleted photo protection.
+- `test_phase4_smart_tv_display.py`: Public display feed, settings endpoints, empty queue, auto-approved photo feed, instant post-moderation rejection eviction, deletion eviction, master slideshow pause toggle.
+- `test_phase5_e2e_integration.py`: Complete multi-step lifecycle: visitor registration, consent enforcement, auto-approval on upload, immediate TV feed presence, admin post-moderation rejection, QR code generation, deletion eviction, settings synchronization.
 
 ---
 

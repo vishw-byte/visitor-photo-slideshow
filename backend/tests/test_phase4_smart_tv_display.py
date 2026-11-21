@@ -2,7 +2,8 @@ import io
 from PIL import Image
 from fastapi.testclient import TestClient
 from app.core.security import hash_password
-from app.infrastructure.database.models import DBAdminUser
+from app.infrastructure.database.models import DBAdminUser, DBPhoto
+from app.domain.entities.models import PhotoStatus
 
 def create_test_image(format="JPEG", color="blue", size=(800, 600)) -> bytes:
     buf = io.BytesIO()
@@ -86,19 +87,12 @@ def test_display_only_approved_and_consented_photos(
     p2_id = uploaded[1]["id"]
     p3_id = uploaded[2]["id"]
 
-    # Initially, all are PENDING -> display should be empty
+    # Newly uploaded photos with explicit consent are automatically APPROVED
     disp_res = client.get("/api/v1/display/photos")
     assert disp_res.status_code == 200
-    assert disp_res.json()["total_count"] == 0
+    assert disp_res.json()["total_count"] == 3
 
-    # Admin approves photo 1
-    appr_res = client.patch(
-        f"/api/v1/admin/photos/{p1_id}/approve",
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
-    assert appr_res.status_code == 200
-
-    # Admin rejects photo 3 with reason
+    # Admin post-moderates: rejects photo 3 with reason
     rej_res = client.patch(
         f"/api/v1/admin/photos/{p3_id}/reject",
         headers={"Authorization": f"Bearer {admin_token}"},
@@ -106,7 +100,10 @@ def test_display_only_approved_and_consented_photos(
     )
     assert rej_res.status_code == 200
 
-    # Photo 2 remains PENDING
+    # Simulate photo 2 in PENDING status (e.g. from secondary creation path)
+    db_p2 = db_session.query(DBPhoto).filter(DBPhoto.id == p2_id).first()
+    db_p2.status = PhotoStatus.PENDING.value
+    db_session.commit()
 
     # Now verify display feed: ONLY photo 1 should appear!
     feed_res = client.get("/api/v1/display/photos")

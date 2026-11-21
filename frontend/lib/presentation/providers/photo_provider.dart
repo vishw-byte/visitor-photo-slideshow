@@ -83,13 +83,16 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
         },
       );
 
-      // Prepend newly uploaded pending photos to state list
+      // Prepend newly uploaded approved photos to state list
       final updatedPhotos = [...uploadedList, ...state.photos];
+      final message = uploadedList.length == 1
+          ? 'Photo uploaded successfully! It will appear on the event screen shortly.'
+          : 'Successfully uploaded ${uploadedList.length} photos! They will appear on the event screen shortly.';
       state = state.copyWith(
         photos: updatedPhotos,
         isUploading: false,
         uploadProgress: 1.0,
-        successMessage: 'Successfully uploaded ${uploadedList.length} photo(s)! Awaiting host review.',
+        successMessage: message,
       );
       return true;
     } catch (e) {

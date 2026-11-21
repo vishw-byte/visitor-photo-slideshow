@@ -30,14 +30,14 @@ def test_full_visitor_to_slideshow_e2e_workflow(client: TestClient, db_session):
     COMPLETE LIFECYCLE VERIFICATION (Phase 5 E2E):
     1. Visitor registers.
     2. Visitor attempts upload without consent -> REJECTED (400).
-    3. Visitor uploads 2 valid photos with consent -> PENDING.
-    4. Admin authenticates via JWT.
-    5. Admin inspects dashboard and moderation queue.
-    6. Admin approves photo 1 and rejects photo 2 (with reason).
-    7. Public Smart TV feed receives photo 1 ONLY.
+    3. Visitor uploads 2 valid photos with consent -> automatically APPROVED.
+    4. Photos appear in visitor history and Smart TV feed immediately.
+    5. Admin authenticates via JWT and inspects dashboard.
+    6. Admin post-moderates: rejects photo 2 (with mandatory reason).
+    7. Public Smart TV feed receives photo 1 ONLY (photo 2 evicted immediately).
     8. Smart TV QR code endpoint renders valid PNG image.
     9. Visitor deletes photo 1 -> photo 1 evicted immediately from Smart TV feed.
-    10. Admin updates settings (toggles transition to ZOOM, slide duration to 15s, show_qr_code=True).
+    10. Admin updates settings (toggles transition to ZOOM, slide duration to 20s, show_qr_code=True).
     11. Smart TV public settings reflect updated values.
     12. Security: Visitor token rejected on admin routes, unapproved media returns 404.
     """
@@ -82,18 +82,19 @@ def test_full_visitor_to_slideshow_e2e_workflow(client: TestClient, db_session):
     assert len(photos) == 2
     p1_id = photos[0]["id"]
     p2_id = photos[1]["id"]
-    assert photos[0]["status"] == "PENDING"
-    assert photos[1]["status"] == "PENDING"
+    assert photos[0]["status"] == "APPROVED"
+    assert photos[1]["status"] == "APPROVED"
 
     # Verify photos are in visitor history
     my_photos_res = client.get("/api/v1/photos/my-photos", headers={"X-Visitor-Token": v_token})
     assert my_photos_res.status_code == 200
     assert len(my_photos_res.json()) >= 2
 
-    # Verify TV display is initially empty (neither photo is approved yet)
+    # Verify TV display immediately includes both newly approved photos
     tv_feed_initial = client.get("/api/v1/display/photos")
     assert tv_feed_initial.status_code == 200
-    assert not any(p["id"] in [p1_id, p2_id] for p in tv_feed_initial.json()["photos"])
+    assert any(p["id"] == p1_id for p in tv_feed_initial.json()["photos"])
+    assert any(p["id"] == p2_id for p in tv_feed_initial.json()["photos"])
 
     # ==========================================
     # STEP 3: Admin Login & Authentication
@@ -108,19 +109,14 @@ def test_full_visitor_to_slideshow_e2e_workflow(client: TestClient, db_session):
     admin_auth = {"Authorization": f"Bearer {jwt_token}"}
 
     # ==========================================
-    # STEP 4: Admin Moderation
+    # STEP 4: Admin Post-Moderation
     # ==========================================
     # Dashboard check
     dash_res = client.get("/api/v1/admin/dashboard", headers=admin_auth)
     assert dash_res.status_code == 200
-    assert dash_res.json()["pending_photos"] >= 2
+    assert dash_res.json()["approved_photos"] >= 2
 
-    # Admin approves photo 1
-    appr_res = client.patch(f"/api/v1/admin/photos/{p1_id}/approve", headers=admin_auth)
-    assert appr_res.status_code == 200
-    assert appr_res.json()["status"] == "APPROVED"
-
-    # Admin rejects photo 2 with mandatory reason
+    # Admin post-moderates: rejects photo 2 with mandatory reason
     rej_res = client.patch(
         f"/api/v1/admin/photos/{p2_id}/reject",
         headers=admin_auth,

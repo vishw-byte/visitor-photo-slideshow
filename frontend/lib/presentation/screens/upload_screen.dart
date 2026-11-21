@@ -72,6 +72,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
       return;
     }
 
+    final count = _selectedImages.length;
     final success = await ref.read(photoProvider.notifier).uploadPhotos(
           files: _selectedImages,
           consentGiven: _consentGiven,
@@ -82,8 +83,12 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         _selectedImages.clear();
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Photos uploaded successfully! Waiting for host review.'),
+        SnackBar(
+          content: Text(
+            count == 1
+                ? 'Photo uploaded successfully! It will appear on the event screen shortly.'
+                : 'Photos uploaded successfully! They will appear on the event screen shortly.',
+          ),
           backgroundColor: AppTheme.successColor,
         ),
       );
@@ -143,7 +148,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
               const Divider(height: 28),
             ],
 
-            // Admin Review Notice
+            // Slideshow & Moderation Notice
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -157,7 +162,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Photos require host approval before going live on the Smart TV slideshow. Inappropriate or blurry photos will be declined.',
+                      'Uploaded photos will appear on the event screen shortly after upload. Event hosts actively moderate all photos and may remove inappropriate content.',
                       style: TextStyle(color: Colors.blue.shade900, fontSize: 13, height: 1.3),
                     ),
                   ),

@@ -52,6 +52,7 @@ class IPhotoRepository(ABC):
         consent_given: bool,
         consent_given_at: Optional[datetime],
         consent_policy_version: Optional[str],
+        status: PhotoStatus = PhotoStatus.PENDING,
     ) -> PhotoEntity:
         pass
 

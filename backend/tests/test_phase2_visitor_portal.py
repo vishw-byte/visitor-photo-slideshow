@@ -34,7 +34,7 @@ def test_duplicate_visitor_handling(client):
     assert resp1.json()["session_token"] != resp2.json()["session_token"]
     assert resp1.json()["id"] != resp2.json()["id"]
 
-def test_valid_image_uploads_and_pending_status(client):
+def test_valid_image_uploads_and_approved_status(client):
     # Register visitor
     reg = client.post("/api/v1/visitors/register", json={"name": "Bob Photographer"})
     token = reg.json()["session_token"]
@@ -56,8 +56,8 @@ def test_valid_image_uploads_and_pending_status(client):
     data = resp.json()
     assert data["uploaded_count"] == 2
     for p in data["photos"]:
-        # Requirement: initial status must strictly be PENDING
-        assert p["status"] == "PENDING"
+        # Requirement: initial status is APPROVED after server validation + explicit consent
+        assert p["status"] == "APPROVED"
         assert p["consent_given"] is True
         assert p["consent_policy_version"] == "v1.0"
         assert p["consent_given_at"] is not None

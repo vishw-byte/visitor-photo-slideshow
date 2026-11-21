@@ -88,7 +88,7 @@ def test_admin_dashboard_stats(client, db_session):
     stats = dash_resp.json()
     assert stats["total_visitors"] >= 2
     assert stats["total_photos"] >= 1
-    assert stats["pending_photos"] >= 1
+    assert stats["approved_photos"] >= 1
 
 def test_photo_approval_and_consent_validation(client, db_session):
     admin = seed_test_admin(db_session, "approver_admin", "Admin123!")
@@ -99,7 +99,7 @@ def test_photo_approval_and_consent_validation(client, db_session):
     v = client.post("/api/v1/visitors/register", json={"name": "Uploader"}).json()
     img_bytes = create_image_bytes("green")
 
-    # Upload valid photo with consent
+    # Upload valid photo with consent -> automatically APPROVED
     upload = client.post(
         "/api/v1/photos/upload",
         files=[("files", ("photo.jpg", img_bytes, "image/jpeg"))],
@@ -107,24 +107,42 @@ def test_photo_approval_and_consent_validation(client, db_session):
         headers={"X-Visitor-Token": v["session_token"]},
     ).json()
     photo_id = upload["photos"][0]["id"]
+    assert upload["photos"][0]["status"] == "APPROVED"
 
-    # 1. Fetch pending list -> photo is present
+    # 1. Fetch approved list -> photo is present immediately
+    approved_list = client.get("/api/v1/admin/photos/approved", headers=admin_headers).json()
+    assert any(p["id"] == photo_id for p in approved_list)
+
+    # 2. Test manual approval workflow on a PENDING photo with consent
+    now = datetime.now(timezone.utc)
+    pending_consented_photo = DBPhoto(
+        visitor_id=v["id"],
+        original_filename="manual_pending.jpg",
+        storage_path="manual_pending.jpg",
+        thumbnail_path="manual_pending.jpg",
+        file_size_bytes=1000,
+        mime_type="image/jpeg",
+        consent_given=True,
+        consent_given_at=now,
+        consent_policy_version="v1.0",
+        status=PhotoStatus.PENDING.value,
+        is_deleted=False,
+        created_at=now,
+    )
+    db_session.add(pending_consented_photo)
+    db_session.commit()
+    db_session.refresh(pending_consented_photo)
+
     pending_list = client.get("/api/v1/admin/photos/pending", headers=admin_headers).json()
-    assert any(p["id"] == photo_id for p in pending_list)
+    assert any(p["id"] == pending_consented_photo.id for p in pending_list)
 
-    # 2. Admin approves photo
-    appr_resp = client.patch(f"/api/v1/admin/photos/{photo_id}/approve", headers=admin_headers)
+    appr_resp = client.patch(f"/api/v1/admin/photos/{pending_consented_photo.id}/approve", headers=admin_headers)
     assert appr_resp.status_code == 200
     assert appr_resp.json()["status"] == "APPROVED"
     assert appr_resp.json()["reviewed_by"] == admin.id
     assert appr_resp.json()["reviewed_at"] is not None
 
-    # 3. Photo moves to approved list
-    approved_list = client.get("/api/v1/admin/photos/approved", headers=admin_headers).json()
-    assert any(p["id"] == photo_id for p in approved_list)
-
-    # 4. Consent enforcement: manually create a photo with consent_given=False in DB
-    now = datetime.now(timezone.utc)
+    # 3. Consent enforcement: manually create a photo with consent_given=False in DB
     no_consent_photo = DBPhoto(
         visitor_id=v["id"],
         original_filename="no_consent.jpg",

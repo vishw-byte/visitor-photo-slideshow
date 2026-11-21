@@ -23,7 +23,7 @@ flowchart TD
         direction TB
         AuthGateway["Presentation: Auth Guards & Gatekeepers\n- get_current_admin (JWT)\n- get_current_visitor (Secure Token)\n- serve_slideshow_photo (4-Point Security Gate)"]
         FileValidator["Security: Magic Byte Signature Validator\n(JPEG: \xFF\xD8\xFF, PNG: \x89PNG, WebP: RIFF...WEBP)"]
-        UseCases["Application: Clean Architecture Use Cases\nRegisterVisitor, UploadBatch, DeletePhoto,\nApprovePhoto, RejectPhoto, GetSlideshowFeed"]
+        UseCases["Application: Clean Architecture Use Cases\nRegisterVisitor, UploadBatch (Auto-Approval on Consent),\nDeletePhoto, ApprovePhoto, RejectPhoto, GetSlideshowFeed"]
         Entities["Domain: Pure Business Entities\nVisitor, Photo, AdminUser, SlideshowSettings"]
         Repositories["Infrastructure: SQLAlchemy Repositories\n(SQLite Dev / PostgreSQL Production)"]
     end
@@ -48,11 +48,12 @@ flowchart TD
 
 ## 2. Security & Privacy Guarantees
 
-### 2.1 Explicit Public-Display Consent
+### 2.1 Explicit Public-Display Consent & Automatic Approval
 - The public-display consent checkbox on the visitor portal is **unchecked by default**.
 - When checked, the backend records `consent_given = True`, `consent_given_at = UTC_TIMESTAMP`, and `consent_policy_version = "v1.0"`.
 - If consent is missing or false, the backend rejects the upload with `HTTP 400 Bad Request`.
-- The Admin use case strictly blocks approval of any photo without visitor consent.
+- **Automatic Approval on Upload**: Once magic-byte verification, size limits, and explicit consent pass, `UploadPhotoUseCase` directly assigns `PhotoStatus.APPROVED`. Photos immediately become eligible for Smart TV rotation without awaiting manual review.
+- **Admin Post-Moderation**: Administrators actively inspect the live approved feed and can immediately reject any inappropriate photo (`PATCH /api/v1/admin/photos/{id}/reject`), evicting it immediately from public rotation. Secondary/legacy paths retain `PhotoStatus.PENDING` by default.
 
 ### 2.2 Immediate Deletion Eviction
 - Visitors have full sovereign control over their media and can delete their photos at any time.

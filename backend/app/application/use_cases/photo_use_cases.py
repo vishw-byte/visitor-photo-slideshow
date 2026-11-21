@@ -6,7 +6,7 @@ from app.domain.interfaces.repositories import (
     IPhotoRepository,
     IStorageService,
 )
-from app.domain.entities.models import PhotoEntity
+from app.domain.entities.models import PhotoEntity, PhotoStatus
 
 class UploadPhotoUseCase:
     def __init__(
@@ -54,7 +54,7 @@ class UploadPhotoUseCase:
 
         consent_given_at = datetime.now(timezone.utc)
 
-        # 5. Create photo record in database (strictly PENDING status)
+        # 5. Create photo record in database with PhotoStatus.APPROVED
         photo = self.photo_repo.create(
             visitor_id=visitor.id,
             original_filename=original_filename,
@@ -67,6 +67,7 @@ class UploadPhotoUseCase:
             consent_given=True,
             consent_given_at=consent_given_at,
             consent_policy_version=consent_policy_version,
+            status=PhotoStatus.APPROVED,
         )
 
         self.visitor_repo.update_last_active(visitor.id)
